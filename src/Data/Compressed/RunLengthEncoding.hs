@@ -37,10 +37,10 @@ module Data.Compressed.RunLengthEncoding
 import Data.Foldable
 import Data.Semigroup
 import Data.Semigroup.Reducer
-import Data.Semigroup.Foldable
+import Data.Semigroup.Semifoldable
 import Data.Hashable
 import Data.Function (on)
-import Data.Functor.Bind
+import Data.Functor.Semimonad
 import Data.Functor.Extend
 import Control.Comonad
 import Data.FingerTree (FingerTree,(|>),(<|),ViewL(..),ViewR(..),(><),viewl,viewr, Measured(..), split)
@@ -81,7 +81,7 @@ instance Functor Run where
 instance Pointed Run where
   point = Run 1
 
-instance Apply Run where
+instance Semiapplicative Run where
   Run n f <.> Run m a = Run (n * m) (f a)
   Run n _  .> Run m a = Run (n * m) a
   Run n a <.  Run m _ = Run (n * m) a
@@ -97,7 +97,7 @@ instance Applicative Run where
   Run n _  *> Run m a = Run (n * m) a
   Run n a <*  Run m _ = Run (n * m) a
 
-instance Bind Run where
+instance Semimonad Run where
   Run n a >>- f = case f a of
     Run m b -> Run (n * m) b
 
@@ -119,8 +119,8 @@ instance Foldable Run where
       | otherwise = g (x `mappend` x) ((y - 1) `quot` 2) (x `mappend` z)
   {-# INLINE foldMap #-}
 
-instance Foldable1 Run where
-  foldMap1 k (Run y0 x0) = f (k x0) y0 where
+instance Semifoldable Run where
+  semifoldMap k (Run y0 x0) = f (k x0) y0 where
     f x y
       | even y = f (x <> x) (y `quot` 2)
       | y == 1 = x
@@ -129,7 +129,7 @@ instance Foldable1 Run where
       | even y = g (x <> x) (y `quot` 2) z
       | y == 1 = x <> z
       | otherwise = g (x <> x) ((y - 1) `quot` 2) (x <> z)
-  {-# INLINE foldMap1 #-}
+  {-# INLINE semifoldMap #-}
 
 instance Measured Count (Run a) where
   measure (Run n _) = Count n
@@ -157,7 +157,7 @@ instance Functor RLE where
 instance Pointed RLE where
   point = RLE . F.singleton . pure
 
-instance Apply RLE where
+instance Semiapplicative RLE where
   (<.>) = (<*>)
   (<. ) = (<* )
   ( .>) = ( *>)
@@ -172,7 +172,7 @@ instance Applicative RLE where
     m = reduceWith getCount bs
   RLE as *> RLE bs = RLE $ mconcat $ replicate (reduceWith getCount as) bs
 
-instance Bind RLE where
+instance Semimonad RLE where
   (>>-) = (>>=)
 
 instance Monad RLE where
